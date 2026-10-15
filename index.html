@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Voice Caller Dialer</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #121212; color: white; text-align: center; padding: 15px; margin: 0; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 15px; max-width: 400px; margin: 15px auto; box-shadow: 0 4px 15px rgba(0,0,0,0.6); text-align: left; }
+        h2 { color: #00e676; text-align: center; margin-top: 0; }
+        label { font-size: 14px; color: #bbb; display: block; margin-top: 12px; }
+        input, select, button { width: 100%; padding: 12px; margin-top: 6px; border-radius: 8px; border: none; font-size: 15px; box-sizing: border-box; }
+        input, select { background: #2c2c2c; color: white; border: 1px solid #444; }
+        .btn-green { background: #00e676; color: black; font-weight: bold; cursor: pointer; margin-top: 18px; font-size: 16px; }
+        .call-screen { display: none; background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); padding: 35px 20px; border-radius: 20px; margin-top: 20px; text-align: center; border: 2px solid #00e676; }
+        .caller-pic { width: 90px; height: 90px; background: #00e676; border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; font-size: 40px; }
+        .caller-title { font-size: 26px; font-weight: bold; margin: 5px 0; }
+        .dialogue-box { color: #ffeb3b; font-size: 18px; margin: 15px 0; font-style: italic; }
+        .btn-pickup { background: #00c853; color: white; width: 45%; display: inline-block; margin: 5px; border-radius: 25px; }
+        .btn-cut { background: #ff1744; color: white; width: 45%; display: inline-block; margin: 5px; border-radius: 25px; }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="setupBox">
+        <h2>📞 AI Voice Caller App</h2>
+        <p style="text-align:center; font-size:13px; color:#aaa;">जिसका फोन आए, उसी की आवाज़ में डायलॉग सुने!</p>
+
+        <label>1. कॉन्टैक्ट का नाम (जैसे: मम्मी, पापा):</label>
+        <input type="text" id="cName" value="मम्मी ❤️">
+
+        <label>2. मोबाइल नंबर:</label>
+        <input type="tel" id="cNum" value="9876543210">
+
+        <label>3. डायलॉग टेम्पलेट चुनें:</label>
+        <select id="template" onchange="setTemp()">
+            <option value="बेटा जल्दी फोन उठा ले, मैं मम्मी बोल रही हूँ!">बेटा जल्दी फोन उठा ले, मैं मम्मी बोल रही हूँ!</option>
+            <option value="अरे ओ लाडले! पापा का फोन आ रहा है, जल्दी उठा!">अरे ओ लाडले! पापा का फोन आ रहा है, जल्दी उठा!</option>
+            <option value="भाई कहां है तू? कब से फोन लगा रहा हूँ, उठा ले!">भाई कहां है तू? कब से फोन लगा रहा हूँ, उठा ले!</option>
+            <option value="custom">-- खुद का मनपसंद डायलॉग लिखें --</option>
+        </select>
+
+        <label>4. क्या बुलवाना चाहते हैं? (डायलॉग):</label>
+        <input type="text" id="cText" value="बेटा जल्दी फोन उठा ले, मैं मम्मी बोल रही हूँ!">
+
+        <label>5. क्लोन की हुई असली आवाज़ (Audio File - Optional):</label>
+        <input type="file" id="voiceFile" accept="audio/*">
+        <small style="color:#888; font-size:11px;">(अगर फाइल नहीं चुनेंगे, तो ऐप खुद अपनी आवाज़ में बोलकर सुनाएगा)</small>
+
+        <button class="btn-green" onclick="triggerCall()">🔔 अभी कॉल टेस्ट करें (Test Call)</button>
+    </div>
+
+    <div class="card call-screen" id="callScreen">
+        <div class="caller-pic">👵</div>
+        <p style="color:#ccc; margin:0;">Incoming Voice Clone Call...</p>
+        <div class="caller-title" id="showName">मम्मी ❤️</div>
+        <p id="showNum" style="color:#aaa; margin-top:4px;">9876543210</p>
+        <div class="dialogue-box" id="showDialogue">"बेटा जल्दी फोन उठा..."</div>
+        <audio id="audioPlayer" loop></audio>
+        <br>
+        <button class="btn-pickup" onclick="stopCall()">📞 उठाएं</button>
+        <button class="btn-cut" onclick="stopCall()">❌ काटें</button>
+    </div>
+
+    <script>
+        let ttsTimer;
+        function setTemp() {
+            let val = document.getElementById('template').value;
+            if(val !== 'custom') document.getElementById('cText').value = val;
+            else { document.getElementById('cText').value = ''; document.getElementById('cText').focus(); }
+        }
+
+        function triggerCall() {
+            let name = document.getElementById('cName').value;
+            let num = document.getElementById('cNum').value;
+            let text = document.getElementById('cText').value;
+            let file = document.getElementById('voiceFile').files[0];
+
+            document.getElementById('setupBox').style.display = 'none';
+            document.getElementById('callScreen').style.display = 'block';
+            document.getElementById('showName').innerText = name;
+            document.getElementById('showNum').innerText = num;
+            document.getElementById('showDialogue').innerText = '🗣️ "' + text + '"';
+
+            // पहले सिस्टम अनाउंस करेगा
+            let intro = new SpeechSynthesisUtterance(name + " का फोन आया है। " + text);
+            intro.lang = 'hi-IN';
+
+            if (file) {
+                let player = document.getElementById('audioPlayer');
+                player.src = URL.createObjectURL(file);
+                player.play();
+            } else {
+                window.speechSynthesis.speak(intro);
+                ttsTimer = setInterval(() => {
+                    window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+                }, 4500);
+            }
+        }
+
+        function stopCall() {
+            window.speechSynthesis.cancel();
+            clearInterval(ttsTimer);
+            let player = document.getElementById('audioPlayer');
+            player.pause();
+            document.getElementById('callScreen').style.display = 'none';
+            document.getElementById('setupBox').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
